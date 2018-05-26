@@ -1,0 +1,130 @@
+
+<?php
+$inp_folder="img/";
+$out_folder="out/";
+$prefix="rosastp_";
+$rozszerzenie=".jpg";
+$antyszum=1;
+$zawartosc= array_diff_assoc(scandir($inp_folder), array('..', '.'));
+$zawartosc_dl=count($zawartosc);
+$czas= array();
+$obr1=array();
+$obr2=array();
+for($plik=2;$plik<($zawartosc_dl-1);$plik++)
+ {
+  $tp=time();
+  
+  $rozmiar = getimagesize($inp_folder.$zawartosc[$plik]);
+printf("<br>%s<br>",$inp_folder.$zawartosc[$plik+1]);
+
+$wynik = imagecreatetruecolor($rozmiar[0], $rozmiar[1]);
+  
+  if($plik==2)
+   {
+    $im = imagecreatefromjpeg($inp_folder.$zawartosc[$plik]);
+	for($x=0;$x<$rozmiar[0];$x++)
+    for($y=0;$y<$rozmiar[1];$y++)
+     {  
+	  $rgb1 = imagecolorat($im, $x, $y);
+      $colors1 = imagecolorsforindex($im, $rgb1);
+      $obr1[$x][$y] = array("r" => $colors1["red"], "g" =>$colors1["green"], "b" => $colors1["blue"]); 
+	 }
+    } 
+
+   $im2= imagecreatefromjpeg($inp_folder.$zawartosc[$plik+1]);
+   
+// zakladamy narazie ze mysle i ze rozmiar obu jest taki sam pozniej w tym mijescu trzba dodac jakis if gdyby tak nie bylo
+
+
+
+for($x=0;$x<$rozmiar[0];$x++)
+ for($y=0;$y<$rozmiar[1];$y++)
+  {   
+   $rgb2 = imagecolorat($im2, $x, $y);
+   $colors2 = imagecolorsforindex($im2, $rgb2);
+   $obr2[$x][$y] = array("r" => $colors2["red"], "g" =>$colors2["green"], "b" => $colors2["blue"]);
+ }
+
+
+
+for($x=0;$x<$rozmiar[0];$x++)
+ for($y=0;$y<$rozmiar[1];$y++)
+  {
+   $suma1=$obr1[$x][$y]["r"]+$obr1[$x][$y]["g"]+$obr1[$x][$y]["b"];
+   $suma2=$obr2[$x][$y]["r"]+$obr2[$x][$y]["g"]+$obr2[$x][$y]["b"];
+
+   if($antyszum)
+    {
+	 $matryca=array();
+     $srednie=0;
+     $odchylenia=0;
+	 if($x>0&&$x<($rozmiar[0]-1)&&$y>0&&$y<($rozmiar[1]-1))
+	 {
+	  $kl=0;
+	  for($xs=$x-1;$xs<=$x+1;$xs++)
+	   for($ys=$y-1;$ys<=$y+1;$ys++)
+	    if($xs!=$x||$ys!=$y)
+		{
+		 $matryca[$kl]=$obr2[$xs][$ys]["r"]+$obr2[$xs][$ys]["g"]+$obr2[$xs][$ys]["b"];
+		 $srednie+=($matryca[$kl])/8;
+		 $kl++;
+		}
+		
+        for($a=0;$a<8;$a++)
+		{
+		 $odchylenia+=pow(($matryca[$a]-$srednie),2)/8;
+		}
+		$std=sqrt($odchylenia);
+		
+	 }
+	 else
+	 {
+	 $srednie=0;
+     $std=0;
+	 }
+	   if(($suma2-$srednie)>3*$std&&$std>5)
+     {
+      $suma2=0;
+     }
+   }
+
+
+  
+   
+   if($suma1>=$suma2)
+     {
+	  $kolor=imagecolorallocate($wynik, $obr1[$x][$y]["r"],$obr1[$x][$y]["g"],$obr1[$x][$y]["b"]);
+	  
+	 }
+     else
+	 {
+	  $kolor=imagecolorallocate($wynik, $obr2[$x][$y]["r"],$obr2[$x][$y]["g"],$obr2[$x][$y]["b"]);
+	  $obr1[$x][$y]=$obr2[$x][$y];
+	 }
+   imagesetpixel($wynik, $x,$y, $kolor);
+   
+  }
+  //header('Content-Type: image/jpeg');
+
+// Output the image
+$outputfile=$out_folder.$prefix.$plik.$rozszerzenie;
+imagejpeg($wynik,$outputfile,100);
+printf("%s<br>",$outputfile);
+// Free up memory
+if($plik==2)
+ imagedestroy($im);
+imagedestroy($im2);
+imagedestroy($wynik);
+$tk=time();
+$czas[$plik]=$tk-$tp;
+printf("zajelo: %d<br>",$tk-$tp);
+$czas_sr=0;
+for($k=2;$k<$plik+1;$k++)
+ $czas_sr+=$czas[$k]/($plik-1);
+printf("pozostalo %s <br><br>",gmdate("H:i:s", $czas_sr*($zawartosc_dl-$plik-2)));
+ ob_flush();
+ flush();
+ 
+}
+ob_end_flush(); 
+?>
